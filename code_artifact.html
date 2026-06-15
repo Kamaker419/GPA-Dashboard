@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내 맘대로 커스텀 학점 계산기</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts (Noto Sans KR for flawless typography) -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f8fafc;
+    }
+    /* Custom scrollbar for beautiful semester tabs */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="text-slate-800 transition-colors duration-200">
+
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    
+    <!-- HEADER -->
+    <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+      <div>
+        <h1 class="text-3xl font-black text-rose-500 tracking-tight flex items-center gap-2">
+          <span>🎓</span> My Custom GPA Dashboard
+        </h1>
+        <p class="text-slate-500 text-sm mt-1">학기 이름부터 전공 체크까지, 완벽하게 통제하는 나만의 학점 정복기</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="openPortabilityModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium transition shadow-sm flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+          데이터 백업 / 복원
+        </button>
+        <button onclick="confirmReset()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-sm font-semibold transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          초기화
+        </button>
+      </div>
+    </header>
+
+    <!-- OVERALL METRICS PANEL -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <!-- Overall GPA -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div class="text-sm font-bold text-slate-400 tracking-wide">전체 평점</div>
+        <div class="flex items-baseline gap-1 mt-2">
+          <span id="overallGpaText" class="text-4xl font-extrabold text-rose-500">0.00</span>
+          <span class="text-slate-400 font-medium">/ 4.5</span>
+        </div>
+        <div class="text-xs text-slate-400 mt-2" id="overallGpaDesc">전체 학기 기준 평균</div>
+      </div>
+
+      <!-- Major GPA -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div class="text-sm font-bold text-slate-400 tracking-wide">전공 평점</div>
+        <div class="flex items-baseline gap-1 mt-2">
+          <span id="majorGpaText" class="text-4xl font-extrabold text-slate-800">0.00</span>
+          <span class="text-slate-400 font-medium">/ 4.5</span>
+        </div>
+        <div class="text-xs text-slate-400 mt-2" id="majorGpaDesc">전공 체크 과목 기준 평균</div>
+      </div>
+
+      <!-- Earned Credits -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold text-slate-400 tracking-wide">취득 학점</span>
+          <button onclick="promptTargetCredits()" class="text-xs text-rose-500 hover:underline flex items-center gap-0.5">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+            목표 변경
+          </button>
+        </div>
+        <div class="flex items-baseline gap-1 mt-2">
+          <span id="earnedCreditsText" class="text-4xl font-extrabold text-emerald-500">0</span>
+          <span class="text-slate-400 font-medium">/ <span id="targetCreditsText">120</span></span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2 mt-2 overflow-hidden">
+          <div id="creditProgressBar" class="bg-emerald-400 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUALIZATION GRAPHS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Trend Line Chart -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 학기별 평점 추이
+        </h3>
+        <div class="h-64 relative">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Grade Distribution Bar Chart -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h3 class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> 성적 분포도
+        </h3>
+        <div class="h-64 relative">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEMESTER TABS NAVIGATION -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-8">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <span class="text-sm font-bold text-slate-500">학기 목록</span>
+        <button onclick="addNewSemester()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-500 text-xs font-bold rounded-lg transition flex items-center gap-1">
+          <span>+</span> 학기 추가
+        </button>
+      </div>
+      <div id="semesterTabsContainer" class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- ACTIVE SEMESTER DETAIL & TABLE EDITOR -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <!-- Active Semester Header Summary -->
+      <div class="bg-slate-50 border-b border-slate-100 px-6 py-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <input type="text" id="activeSemesterNameInput" onchange="renameActiveSemester(this.value)" class="text-xl font-bold text-slate-800 bg-transparent hover:bg-slate-200 focus:bg-white focus:ring-2 focus:ring-rose-400 px-2 py-1 rounded-lg border border-transparent transition focus:border-rose-400 outline-none w-full max-w-xs" placeholder="학기 이름 입력">
+          <span class="text-xs text-slate-400 whitespace-nowrap">✏️ 학기명 수정 가능</span>
+        </div>
+        
+        <div class="flex items-center gap-4 text-sm font-medium text-slate-600">
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">평점:</span>
+            <span id="semOverallGpa" class="font-bold text-rose-500">0.00</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">전공:</span>
+            <span id="semMajorGpa" class="font-bold text-slate-800">0.00</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">취득:</span>
+            <span id="semEarnedCredits" class="font-bold text-emerald-500">0학점</span>
+          </div>
+          <button onclick="deleteActiveSemester()" class="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition" title="이 학기 삭제">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Course Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-100 text-slate-400 text-xs font-bold tracking-wider uppercase bg-slate-50/50">
+              <th class="py-4 px-6 w-1/12 text-center">전공</th>
+              <th class="py-4 px-6 w-5/12">과목명</th>
+              <th class="py-4 px-6 w-2/12">학점</th>
+              <th class="py-4 px-6 w-2/12">성적</th>
+              <th class="py-4 px-6 w-2/12 text-center">삭제</th>
+            </tr>
+          </thead>
+          <tbody id="courseTableBody" class="divide-y divide-slate-100">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add New Course Button Section -->
+      <div class="p-6 bg-slate-50/30 flex justify-center border-t border-slate-100">
+        <button onclick="addNewCourse()" class="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-xl text-sm shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          과목 추가하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTABILITY MODAL (JSON BACKUP / RESTORE) -->
+  <div id="portabilityModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden transform scale-95 transition-transform duration-300">
+      <div class="px-6 py-4 bg-slate-800 text-white flex justify-between items-center">
+        <h3 class="font-bold flex items-center gap-2 text-lg">
+          <span>💾</span> 데이터 백업 및 복원
+        </h3>
+        <button onclick="closePortabilityModal()" class="text-slate-400 hover:text-white transition">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-6 space-y-6">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2">백업 데이터 (JSON 포맷)</label>
+          <textarea id="jsonTextArea" class="w-full h-32 p-3 text-xs font-mono border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400 bg-slate-50 transition" readonly></textarea>
+          <div class="flex justify-end gap-2 mt-2">
+            <button onclick="copyJsonToClipboard()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition">클립보드에 복사</button>
+            <button onclick="downloadJsonFile()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-lg transition">JSON 파일 다운로드</button>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-6">
+          <label class="block text-sm font-bold text-slate-700 mb-2">데이터 복원하기</label>
+          <p class="text-xs text-slate-400 mb-3">복사해둔 JSON 텍스트를 입력하거나 파일을 업로드하면 이전 상태로 학점 데이터를 완벽하게 복원합니다.</p>
+          <textarea id="importJsonArea" class="w-full h-24 p-3 text-xs font-mono border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400 transition" placeholder='여기에 JSON 문자열을 붙여넣으세요...'></textarea>
+          <div class="flex justify-between items-center mt-2">
+            <input type="file" id="jsonFileInput" accept=".json" onchange="importJsonFile(event)" class="hidden">
+            <button onclick="document.getElementById('jsonFileInput').click()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition">
+              파일 선택하기...
+            </button>
+            <button onclick="importJsonText()" class="px-4 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+              붙여넣은 텍스트로 복원
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM CONFIRM DIALOG MODAL -->
+  <div id="customConfirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden p-6 transform scale-95 transition-transform duration-300">
+      <div class="flex items-center gap-3 text-amber-500 mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <h3 class="text-lg font-black text-slate-800" id="confirmTitle">경고</h3>
+      </div>
+      <p class="text-sm text-slate-600 mb-6" id="confirmMessage">이 작업을 진행하시겠습니까?</p>
+      <div class="flex justify-end gap-2">
+        <button onclick="closeConfirmModal(false)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">취소</button>
+        <button onclick="closeConfirmModal(true)" class="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold shadow-sm transition" id="confirmOkBtn">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 text-sm z-50">
+    <span id="toastIcon">✨</span>
+    <span id="toastMessage">데이터가 성공적으로 업데이트되었습니다.</span>
+  </div>
+
+  <script>
+    // --- APP CONSTANTS & STATE ---
+    const APP_STORAGE_KEY = 'CUSTOM_GPA_CALCULATOR_DATA_v1';
+    
+    // Grade values to calculate GPA (4.5 Scale)
+    const GRADE_SCALE = {
+      'A+': 4.5,
+      'A0': 4.0,
+      'B+': 3.5,
+      'B0': 3.0,
+      'C+': 2.5,
+      'C0': 2.0,
+      'D+': 1.5,
+      'D0': 1.0,
+      'F' : 0.0,
+      'P' : null, // Excluded from GPA calculation
+      'NP': null  // Excluded from GPA calculation
+    };
+
+    // Standard list of academic grades for selector
+    const GRADES = Object.keys(GRADE_SCALE);
+
+    // Initial Mock State matching image data and context
+    const initialMockState = {
+      targetCredits: 120,
+      activeSemesterId: 'sem-2026-1',
+      semesters: [
+        {
+          id: 'sem-2025-1',
+          name: '1학년 1학기',
+          courses: [
+            { id: 'c1', name: '미적분학 및 연습1', credits: 3, grade: 'A+', isMajor: true },
+            { id: 'c2', name: '일반물리학1', credits: 3, grade: 'A0', isMajor: false },
+            { id: 'c3', name: '프로그래밍기초', credits: 3, grade: 'A+', isMajor: true },
+            { id: 'c4', name: '영어글쓰기', credits: 2, grade: 'B+', isMajor: false },
+            { id: 'c5', name: '신입생세미나', credits: 1, grade: 'P', isMajor: false }
+          ]
+        },
+        {
+          id: 'sem-2025-2',
+          name: '1학년 2학기',
+          courses: [
+            { id: 'c6', name: '미적분학 및 연습2', credits: 3, grade: 'A+', isMajor: true },
+            { id: 'c7', name: '일반물리학2', credits: 3, grade: 'B+', isMajor: false },
+            { id: 'c8', name: '자료구조', credits: 3, grade: 'A+', isMajor: true },
+            { id: 'c9', name: '과학적글쓰기', credits: 2, grade: 'A0', isMajor: false },
+            { id: 'c10', name: '대학생활과의 만남', credits: 1, grade: 'P', isMajor: false }
+          ]
+        },
+        {
+          id: 'sem-2026-1',
+          name: '2학년 1학기',
+          courses: [
+            { id: 'c11', name: '확률 및 통계1', credits: 3, grade: 'A+', isMajor: true },
+            { id: 'c12', name: '해석개론1', credits: 3, grade: 'A+', isMajor: true },
+            { id: 'c13', name: '해석개론 연습 I', credits: 1, grade: 'P', isMajor: true },
+            { id: 'c14', name: '이산수학', credits: 3, grade: 'A0', isMajor: true },
+            { id: 'c15', name: '선형대수1', credits: 3, grade: 'A+', isMajor: true },
+            { id: 'c16', name: '선형대수 연습1', credits: 1, grade: 'P', isMajor: true },
+            { id: 'c17', name: '미분방정식', credits: 3, grade: 'A+', isMajor: true }
+          ]
+        }
+      ]
+    };
+
+    let state = null;
+    let trendChartInstance = null;
+    let distributionChartInstance = null;
+    let activeConfirmCallback = null;
+
+    // --- INITIALIZATION ---
+    window.onload = function() {
+      loadState();
+      renderApp();
+    };
+
+    function loadState() {
+      try {
+        const stored = localStorage.getItem(APP_STORAGE_KEY);
+        if (stored) {
+          state = JSON.parse(stored);
+        } else {
+          state = JSON.parse(JSON.stringify(initialMockState)); // deep clone
+        }
+      } catch (e) {
+        state = JSON.parse(JSON.stringify(initialMockState));
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // --- RENDER APP & RECALCULATE ---
+    function renderApp() {
+      calculateMetrics();
+      renderSemesterTabs();
+      renderActiveSemesterTable();
+      updateCharts();
+      prepareBackupData();
+    }
+
+    // --- MATHEMATICAL AND STATISTICAL CALCULATIONS ---
+    function calculateMetrics() {
+      let overallSum = 0;
+      let overallCreditsForGpa = 0;
+      let overallEarnedCredits = 0;
+
+      let majorSum = 0;
+      let majorCreditsForGpa = 0;
+
+      state.semesters.forEach(sem => {
+        let semSum = 0;
+        let semCreditsForGpa = 0;
+        let semEarned = 0;
+
+        let semMajorSum = 0;
+        let semMajorCreditsForGpa = 0;
+
+        sem.courses.forEach(course => {
+          const score = GRADE_SCALE[course.grade];
+          const credits = parseFloat(course.credits) || 0;
+
+          if (score !== null) {
+            // GPA-applicable grades (A+ ~ F)
+            semSum += score * credits;
+            semCreditsForGpa += credits;
+
+            if (course.isMajor) {
+              semMajorSum += score * credits;
+              semMajorCreditsForGpa += credits;
+            }
+          }
+
+          // Earned Credits calculation (any grade other than F or NP counts)
+          if (course.grade !== 'F' && course.grade !== 'NP') {
+            semEarned += credits;
+          }
+        });
+
+        // Store intermediate calculations inside each semester object for view usage
+        sem.gpa = semCreditsForGpa > 0 ? (semSum / semCreditsForGpa) : 0;
+        sem.majorGpa = semMajorCreditsForGpa > 0 ? (semMajorSum / semMajorCreditsForGpa) : 0;
+        sem.earnedCredits = semEarned;
+
+        overallSum += semSum;
+        overallCreditsForGpa += semCreditsForGpa;
+        overallEarnedCredits += semEarned;
+
+        majorSum += semMajorSum;
+        majorCreditsForGpa += semMajorCreditsForGpa;
+      });
+
+      const overallGpa = overallCreditsForGpa > 0 ? (overallSum / overallCreditsForGpa) : 0;
+      const majorGpa = majorCreditsForGpa > 0 ? (majorSum / majorCreditsForGpa) : 0;
+
+      // Update Header Scoreboards
+      document.getElementById('overallGpaText').textContent = overallGpa.toFixed(2);
+      document.getElementById('majorGpaText').textContent = majorGpa.toFixed(2);
+      document.getElementById('earnedCreditsText').textContent = overallEarnedCredits;
+      document.getElementById('targetCreditsText').textContent = state.targetCredits;
+
+      // Earned credits progress bar
+      const progressPercent = Math.min((overallEarnedCredits / state.targetCredits) * 100, 100);
+      document.getElementById('creditProgressBar').style.width = `${progressPercent}%`;
+
+      // Active Semester calculations (find and render)
+      const activeSem = state.semesters.find(s => s.id === state.activeSemesterId);
+      if (activeSem) {
+        document.getElementById('semOverallGpa').textContent = activeSem.gpa.toFixed(2);
+        document.getElementById('semMajorGpa').textContent = activeSem.majorGpa.toFixed(2);
+        document.getElementById('semEarnedCredits').textContent = `${activeSem.earnedCredits}학점`;
+      }
+    }
+
+    // --- TAB RENDERING ---
+    function renderSemesterTabs() {
+      const container = document.getElementById('semesterTabsContainer');
+      container.innerHTML = '';
+
+      state.semesters.forEach(sem => {
+        const isActive = sem.id === state.activeSemesterId;
+        const activeClass = isActive 
+          ? 'bg-rose-500 text-white shadow-sm font-extrabold ring-2 ring-rose-300' 
+          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-medium';
+
+        const btn = document.createElement('button');
+        btn.className = `px-5 py-2.5 rounded-xl text-sm transition-all shrink-0 duration-150 ${activeClass}`;
+        btn.textContent = sem.name;
+        btn.onclick = () => selectSemester(sem.id);
+        container.appendChild(btn);
+      });
+    }
+
+    function selectSemester(id) {
+      state.activeSemesterId = id;
+      saveState();
+      renderApp();
+    }
+
+    // --- COURSE TABLE RENDERING ---
+    function renderActiveSemesterTable() {
+      const activeSem = state.semesters.find(s => s.id === state.activeSemesterId);
+      const tableBody = document.getElementById('courseTableBody');
+      const nameInput = document.getElementById('activeSemesterNameInput');
+
+      if (!activeSem) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm">학기를 추가하거나 선택해 주세요.</td></tr>`;
+        nameInput.value = '';
+        return;
+      }
+
+      nameInput.value = activeSem.name;
+      tableBody.innerHTML = '';
+
+      activeSem.courses.forEach(course => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/50 transition duration-100';
+
+        // 1. Major Checkbox
+        const tdMajor = document.createElement('td');
+        tdMajor.className = 'py-4 px-6 text-center';
+        tdMajor.innerHTML = `
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" ${course.isMajor ? 'checked' : ''} onchange="updateCourseField('${course.id}', 'isMajor', this.checked)" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500 relative"></div>
+          </label>
+        `;
+
+        // 2. Course Name Input
+        const tdName = document.createElement('td');
+        tdName.className = 'py-4 px-6';
+        tdName.innerHTML = `
+          <input type="text" value="${course.name}" onchange="updateCourseField('${course.id}', 'name', this.value)" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-rose-400 transition" placeholder="예: 해석개론1">
+        `;
+
+        // 3. Credits Selector
+        const tdCredits = document.createElement('td');
+        tdCredits.className = 'py-4 px-6';
+        tdCredits.innerHTML = `
+          <select onchange="updateCourseField('${course.id}', 'credits', parseFloat(this.value))" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-rose-400 transition">
+            <option value="1" ${course.credits === 1 ? 'selected' : ''}>1학점</option>
+            <option value="2" ${course.credits === 2 ? 'selected' : ''}>2학점</option>
+            <option value="3" ${course.credits === 3 ? 'selected' : ''}>3학점</option>
+            <option value="4" ${course.credits === 4 ? 'selected' : ''}>4학점</option>
+          </select>
+        `;
+
+        // 4. Grade Selector
+        const tdGrade = document.createElement('td');
+        tdGrade.className = 'py-4 px-6';
+        let optionsHtml = '';
+        GRADES.forEach(grade => {
+          optionsHtml += `<option value="${grade}" ${course.grade === grade ? 'selected' : ''}>${grade}</option>`;
+        });
+        tdGrade.innerHTML = `
+          <select onchange="updateCourseField('${course.id}', 'grade', this.value)" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-rose-400 transition font-semibold text-slate-700">
+            ${optionsHtml}
+          </select>
+        `;
+
+        // 5. Delete Button
+        const tdDelete = document.createElement('td');
+        tdDelete.className = 'py-4 px-6 text-center';
+        tdDelete.innerHTML = `
+          <button onclick="deleteCourse('${course.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition">
+            <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        `;
+
+        tr.appendChild(tdMajor);
+        tr.appendChild(tdName);
+        tr.appendChild(tdCredits);
+        tr.appendChild(tdGrade);
+        tr.appendChild(tdDelete);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // --- COURSE FIELD UPDATER ---
+    function updateCourseField(courseId, field, value) {
+      const activeSem = state.semesters.find(s => s.id === state.activeSemesterId);
+      if (!activeSem) return;
+
+      const course = activeSem.courses.find(c => c.id === courseId);
+      if (course) {
+        course[field] = value;
+        saveState();
+        calculateMetrics();
+        updateCharts();
+        prepareBackupData();
+        // Live updates for semester header GPA badges
+        document.getElementById('semOverallGpa').textContent = activeSem.gpa.toFixed(2);
+        document.getElementById('semMajorGpa').textContent = activeSem.majorGpa.toFixed(2);
+        document.getElementById('semEarnedCredits').textContent = `${activeSem.earnedCredits}학점`;
+      }
+    }
+
+    // --- ADD / DELETE METHODS ---
+    function addNewSemester() {
+      const uniqueId = `sem-${Date.now()}`;
+      const defaultName = `${state.semesters.length + 1}학년 1학기`;
+      
+      state.semesters.push({
+        id: uniqueId,
+        name: defaultName,
+        courses: []
+      });
+      state.activeSemesterId = uniqueId;
+      saveState();
+      renderApp();
+      showToast('🎉 새로운 학기가 추가되었습니다.');
+    }
+
+    function renameActiveSemester(newName) {
+      const activeSem = state.semesters.find(s => s.id === state.activeSemesterId);
+      if (activeSem && newName.trim() !== '') {
+        activeSem.name = newName;
+        saveState();
+        renderSemesterTabs();
+        updateCharts();
+        prepareBackupData();
+        showToast('🏷️ 학기명이 멋지게 변경되었습니다.');
+      }
+    }
+
+    function deleteActiveSemester() {
+      showConfirmDialog('학기 삭제', `정말 [${state.semesters.find(s => s.id === state.activeSemesterId)?.name}] 학기 전체를 삭제하시겠습니까? 관련 성적 데이터가 모두 삭제됩니다.`, (confirmed) => {
+        if (confirmed) {
+          state.semesters = state.semesters.filter(s => s.id !== state.activeSemesterId);
+          if (state.semesters.length > 0) {
+            state.activeSemesterId = state.semesters[0].id;
+          } else {
+            state.activeSemesterId = null;
+          }
+          saveState();
+          renderApp();
+          showToast('🗑️ 학기가 완전히 지워졌습니다.');
+        }
+      });
+    }
+
+    function addNewCourse() {
+      const activeSem = state.semesters.find(s => s.id === state.activeSemesterId);
+      if (!activeSem) return;
+
+      const uniqueCourseId = `c-${Date.now()}`;
+      activeSem.courses.push({
+        id: uniqueCourseId,
+        name: '',
+        credits: 3,
+        grade: 'A+',
+        isMajor: true
+      });
+      saveState();
+      renderApp();
+    }
+
+    function deleteCourse(courseId) {
+      const activeSem = state.semesters.find(s => s.id === state.activeSemesterId);
+      if (!activeSem) return;
+
+      activeSem.courses = activeSem.courses.filter(c => c.id !== courseId);
+      saveState();
+      renderApp();
+    }
+
+    function promptTargetCredits() {
+      const target = prompt("목표 졸업 취득 학점을 입력하세요:", state.targetCredits);
+      const parsed = parseInt(target, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        state.targetCredits = parsed;
+        saveState();
+        renderApp();
+        showToast(`🎯 목표 졸업 학점이 ${parsed}학점으로 변경되었습니다.`);
+      }
+    }
+
+    function confirmReset() {
+      showConfirmDialog('데이터 완전 초기화', '정말로 모든 학점 데이터를 삭제하고 초기 상태로 돌아가시겠습니까? 이 작업은 되돌릴 수 없습니다.', (confirmed) => {
+        if (confirmed) {
+          localStorage.removeItem(APP_STORAGE_KEY);
+          loadState();
+          renderApp();
+          showToast('🧹 모든 데이터가 성공적으로 초기화되었습니다.');
+        }
+      });
+    }
+
+    // --- VISUALIZATION CHARTS GENERATOR ---
+    function updateCharts() {
+      const semesterNames = state.semesters.map(s => s.name);
+      const overallGpaData = state.semesters.map(s => s.gpa);
+      const majorGpaData = state.semesters.map(s => s.majorGpa);
+
+      // 1. GPA 추이 라인 차트
+      if (trendChartInstance) trendChartInstance.destroy();
+
+      const trendCtx = document.getElementById('trendChart').getContext('2d');
+      trendChartInstance = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: semesterNames,
+          datasets: [
+            {
+              label: '전체 평점',
+              data: overallGpaData,
+              borderColor: '#f43f5e', // rose-500
+              backgroundColor: 'rgba(244, 63, 94, 0.1)',
+              borderWidth: 3,
+              tension: 0.1,
+              pointBackgroundColor: '#f43f5e',
+              pointRadius: 5,
+              pointHoverRadius: 7
+            },
+            {
+              label: '전공 평점',
+              data: majorGpaData,
+              borderColor: '#94a3b8', // slate-400
+              backgroundColor: 'rgba(148, 163, 184, 0.05)',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              tension: 0.1,
+              pointBackgroundColor: '#94a3b8',
+              pointRadius: 4,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 20,
+                font: { family: 'Noto Sans KR', size: 11 }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 0.0,
+              max: 4.5,
+              ticks: {
+                stepSize: 0.5,
+                font: { family: 'Noto Sans KR', size: 10 }
+              },
+              grid: {
+                color: '#f1f5f9'
+              }
+            },
+            x: {
+              ticks: {
+                font: { family: 'Noto Sans KR', size: 10 }
+              },
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+
+      // 2. 학점 성적 분포 바 차트
+      const gradeCounts = {};
+      GRADES.forEach(g => gradeCounts[g] = 0);
+      let totalValidCourses = 0;
+
+      state.semesters.forEach(sem => {
+        sem.courses.forEach(c => {
+          if (gradeCounts[c.grade] !== undefined) {
+            gradeCounts[c.grade]++;
+            totalValidCourses++;
+          }
+        });
+      });
+
+      const activeGrades = GRADES.filter(g => gradeCounts[g] > 0);
+      const activeGradeCounts = activeGrades.map(g => gradeCounts[g]);
+      const activeGradePercentages = activeGradeCounts.map(count => 
+        totalValidCourses > 0 ? Math.round((count / totalValidCourses) * 100) : 0
+      );
+
+      // Define standard grade level colors
+      const backgroundColors = activeGrades.map(grade => {
+        if (grade.startsWith('A')) return '#f43f5e'; // rose-500
+        if (grade === 'P') return '#eab308'; // yellow-500
+        if (grade.startsWith('B')) return '#10b981'; // emerald-500
+        if (grade.startsWith('C')) return '#3b82f6'; // blue-500
+        return '#94a3b8'; // slate-400
+      });
+
+      if (distributionChartInstance) distributionChartInstance.destroy();
+
+      const distCtx = document.getElementById('distributionChart').getContext('2d');
+      distributionChartInstance = new Chart(distCtx, {
+        type: 'bar',
+        data: {
+          labels: activeGrades,
+          datasets: [{
+            data: activeGradePercentages,
+            backgroundColor: backgroundColors,
+            borderRadius: 8,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const grade = context.label;
+                  const count = gradeCounts[grade];
+                  return `${grade}: ${context.raw}% (${count}개 과목)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              max: 100,
+              ticks: {
+                callback: value => `${value}%`,
+                font: { family: 'Noto Sans KR', size: 10 }
+              },
+              grid: {
+                color: '#f1f5f9'
+              }
+            },
+            y: {
+              ticks: {
+                font: { family: 'Noto Sans KR', size: 11, weight: 'bold' }
+              },
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // --- JSON PORTABILITY (EXPORT & IMPORT) ---
+    function prepareBackupData() {
+      const dataStr = JSON.stringify(state, null, 2);
+      document.getElementById('jsonTextArea').value = dataStr;
+    }
+
+    function openPortabilityModal() {
+      const modal = document.getElementById('portabilityModal');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.firstElementChild.classList.remove('scale-95');
+    }
+
+    function closePortabilityModal() {
+      const modal = document.getElementById('portabilityModal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      modal.firstElementChild.classList.add('scale-95');
+    }
+
+    function copyJsonToClipboard() {
+      const textarea = document.getElementById('jsonTextArea');
+      textarea.select();
+      document.execCommand('copy');
+      showToast('📋 복사되었습니다. 안전한 곳에 저장해두세요!');
+    }
+
+    function downloadJsonFile() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "custom_my_gpa_data.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('💾 학점 데이터 파일 다운로드 완료!');
+    }
+
+    function importJsonText() {
+      const text = document.getElementById('importJsonArea').value;
+      if (!text.trim()) {
+        showToast('⚠️ 입력창에 JSON 텍스트를 먼저 입력해주세요.');
+        return;
+      }
+      try {
+        const parsed = JSON.parse(text);
+        if (validateImportedData(parsed)) {
+          state = parsed;
+          saveState();
+          renderApp();
+          closePortabilityModal();
+          document.getElementById('importJsonArea').value = '';
+          showToast('⚡ 모든 데이터가 정상 복원되었습니다!');
+        } else {
+          showToast('❌ 잘못된 구조의 JSON 데이터입니다.');
+        }
+      } catch (e) {
+        showToast('❌ 올바르지 않은 JSON 데이터입니다.');
+      }
+    }
+
+    function importJsonFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (validateImportedData(parsed)) {
+            state = parsed;
+            saveState();
+            renderApp();
+            closePortabilityModal();
+            showToast('⚡ 학점 데이터가 성공적으로 불러와졌습니다!');
+          } else {
+            showToast('❌ JSON 파일의 형식이 잘못되었습니다.');
+          }
+        } catch (err) {
+          showToast('❌ 파일을 읽는 중 오류가 발생했습니다.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Basic Data Validation
+    function validateImportedData(data) {
+      return data && typeof data === 'object' && Array.isArray(data.semesters);
+    }
+
+    // --- CUSTOM CONFIRM DIALOG SYSTEM (Replacing native alerts) ---
+    function showConfirmDialog(title, message, callback) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      
+      const modal = document.getElementById('customConfirmModal');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      modal.firstElementChild.classList.remove('scale-95');
+      
+      activeConfirmCallback = callback;
+    }
+
+    function closeConfirmModal(result) {
+      const modal = document.getElementById('customConfirmModal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      modal.firstElementChild.classList.add('scale-95');
+      
+      if (activeConfirmCallback) {
+        activeConfirmCallback(result);
+        activeConfirmCallback = null;
+      }
+    }
+
+    // --- TOAST SYSTEMS ---
+    function showToast(message) {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastMessage').textContent = message;
+      
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
